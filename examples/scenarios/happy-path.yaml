@@ -1,0 +1,12 @@
+# Accept everything with AA, like a well-behaved partner system.
+#   mllp-sim serve --scenario examples/scenarios/happy-path.yaml
+name: happy-path
+description: Acknowledge every message with AA.
+
+server:
+  host: 127.0.0.1
+  port: 2575
+  http_port: 8080
+
+default:
+  ack: AA

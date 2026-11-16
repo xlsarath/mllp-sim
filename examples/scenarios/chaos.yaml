@@ -1,0 +1,55 @@
+# A partner system having a bad day. Use it to prove your interface engine
+# retries, times out and alerts the way you think it does.
+#   mllp-sim serve --scenario examples/scenarios/chaos.yaml --seed 7
+name: chaos
+description: Rejections, slow ACKs, dropped connections and silence.
+
+server:
+  port: 2575
+  http_port: 8080
+
+rules:
+  # Deterministic business errors first, so they always win.
+  - name: unknown-patient
+    match:
+      type: ADT^A08
+      fields:
+        PID-3.1: { regex: "^TEST" }
+    action:
+      ack: AE
+      error: Patient not found
+      error_code: 204
+
+  - name: unsupported-event
+    match:
+      type: [ADT^A03, ADT^A04]
+    action:
+      ack: AR
+      error: Event not supported by this receiver
+      error_code: 201
+
+  # Then transport-level chaos, each a fraction of the remaining traffic.
+  - name: slow-ack
+    probability: 20%
+    action:
+      ack: AA
+      delay_ms: [1500, 4000]
+
+  - name: drop-connection
+    probability: 5%
+    action:
+      reply: drop
+
+  - name: silent
+    probability: 5%
+    action:
+      reply: none
+
+  - name: duplicate-ack
+    probability: 5%
+    action:
+      reply: duplicate
+
+default:
+  ack: AA
+  delay_ms: [5, 50]

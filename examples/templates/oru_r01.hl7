@@ -1,0 +1,4 @@
+MSH|^~\&|ACME_LAB|ACME_LAB|{{ MSH-3 }}|{{ MSH-4 }}|{{ now }}||ORU^R01^ORU_R01|{{ control_id }}|P|2.5.1
+PID|1||{{ PID-3 }}||{{ PID-5 }}||{{ PID-7 }}|{{ PID-8 }}
+OBR|1|{{ ORC-2 }}|{{ uuid }}|{{ OBR-4 }}|||{{ OBR-7 }}|||||||||||||||{{ now }}||CH|F
+OBX|1|NM|{{ OBR-4 }}||95|mg/dL|70-99|N|||F

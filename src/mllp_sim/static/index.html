@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mllp-sim traffic</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1d2330; --muted: #667085; --line: #e4e7ec; --hover: #f5f7fa;
+    --ok: #12805c; --warn: #b54708; --bad: #c4320a; --chip: #f2f4f7;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #11141a; --fg: #e6e9ef; --muted: #98a2b3; --line: #2a303b; --hover: #1a1f28;
+      --ok: #47cd89; --warn: #fdb022; --bad: #f97066; --chip: #222833;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-size: 14px; }
+  header { display: flex; gap: 16px; align-items: baseline; padding: 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  h1 { font-size: 16px; margin: 0; }
+  .muted { color: var(--muted); }
+  main { padding: 0 16px 16px; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { font-weight: 600; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover { background: var(--hover); }
+  .chip { display: inline-block; padding: 1px 8px; border-radius: 999px; background: var(--chip); font-weight: 600; font-size: 12px; }
+  .AA, .CA, .sent { color: var(--ok); } .AE, .CE { color: var(--warn); } .AR, .CR, .failed { color: var(--bad); }
+  pre { background: var(--chip); padding: 12px; border-radius: 8px; overflow-x: auto; margin: 6px 0 14px; font-size: 12.5px; }
+  dialog { width: min(900px, calc(100vw - 32px)); border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--fg); }
+  dialog::backdrop { background: rgb(0 0 0 / .35); }
+  button { font: inherit; padding: 4px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--chip); color: var(--fg); cursor: pointer; }
+  .empty { padding: 32px 0; text-align: center; }
+</style>
+</head>
+<body>
+<header>
+  <h1>mllp-sim</h1>
+  <span class="muted" id="summary">connecting...</span>
+  <label class="muted"><input type="checkbox" id="live" checked> live</label>
+</header>
+<main>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>#</th><th>Time (UTC)</th><th>Dir</th><th>Peer</th><th>Type</th><th>Control id</th><th>Rule</th><th>Reply</th><th>ACK</th><th>ms</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+  <p class="muted empty" id="empty" hidden>No traffic yet. Send a message to the MLLP port.</p>
+</main>
+<dialog id="detail">
+  <form method="dialog" style="float:right"><button>Close</button></form>
+  <h3 id="detail-title"></h3>
+  <div class="muted" id="detail-error"></div>
+  <strong>Message</strong><pre id="detail-message"></pre>
+  <strong>Acknowledgement</strong><pre id="detail-ack"></pre>
+</dialog>
+<script>
+  const rows = document.getElementById("rows");
+  const byId = new Map();
+  const cell = (text, cls) => {
+    const td = document.createElement("td");
+    if (cls) { const span = document.createElement("span"); span.className = "chip " + cls; span.textContent = text; td.append(span); }
+    else td.textContent = text ?? "";
+    return td;
+  };
+  const show = (ex) => {
+    document.getElementById("detail-title").textContent = `#${ex.id} ${ex.message_type ?? "(unparseable)"} ${ex.control_id ?? ""}`;
+    document.getElementById("detail-error").textContent = ex.error ? "Error: " + ex.error : "";
+    document.getElementById("detail-message").textContent = (ex.message || "").replaceAll("\r", "\n");
+    document.getElementById("detail-ack").textContent = (ex.ack || "(none)").replaceAll("\r", "\n");
+    document.getElementById("detail").showModal();
+  };
+  async function refresh() {
+    try {
+      const [health, data] = await Promise.all([
+        fetch("healthz").then(r => r.json()),
+        fetch("messages?limit=200").then(r => r.json()),
+      ]);
+      document.getElementById("summary").textContent =
+        `v${health.version} | scenario ${health.scenario || "default"} | up ${Math.round(health.uptime_s)}s`;
+      rows.replaceChildren();
+      byId.clear();
+      for (const ex of data.messages) {
+        byId.set(ex.id, ex);
+        const tr = document.createElement("tr");
+        tr.append(
+          cell(ex.id), cell(ex.timestamp.slice(11, 23)), cell(ex.direction === "inbound" ? "in" : "out"),
+          cell(ex.peer), cell(ex.message_type ?? "?"), cell(ex.control_id), cell(ex.rule),
+          cell(ex.reply, ex.reply === "ack" ? "" : ex.reply), cell(ex.ack_code ?? "-", ex.ack_code ?? ""),
+          cell(ex.latency_ms == null ? "" : ex.latency_ms.toFixed(1)),
+        );
+        tr.addEventListener("click", () => show(byId.get(ex.id)));
+        rows.append(tr);
+      }
+      document.getElementById("empty").hidden = data.messages.length > 0;
+    } catch (err) {
+      document.getElementById("summary").textContent = "disconnected";
+    }
+  }
+  refresh();
+  setInterval(() => { if (document.getElementById("live").checked && !document.getElementById("detail").open) refresh(); }, 2000);
+</script>
+</body>
+</html>

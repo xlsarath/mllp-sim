@@ -1,0 +1,35 @@
+# Used by docker-compose.yml: same as scenarios/order-to-result.yaml, but the
+# results go to the "ehr" service instead of localhost.
+name: compose-lab
+description: ACK new orders, then send an ORU^R01 result to the ehr service.
+
+server:
+  host: 0.0.0.0
+  port: 2575
+  http_port: 8080
+
+rules:
+  - name: new-order
+    match:
+      type: ORM^O01
+      fields:
+        ORC-1: NW
+        OBR-4.1: { exists: true }
+    action:
+      ack: AA
+      followup:
+        name: result
+        host: ehr
+        port: 2576
+        delay_ms: 1000
+        template_file: ../templates/oru_r01.hl7
+
+  - name: order-without-test
+    match:
+      type: ORM^O01
+      fields:
+        OBR-4.1: { exists: false }
+    action:
+      ack: AE
+      error: OBR-4 (universal service identifier) is required
+      error_code: 101

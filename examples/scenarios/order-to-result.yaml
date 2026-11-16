@@ -1,0 +1,41 @@
+# Acts like a lab: ACKs each new order (ORM^O01 with ORC-1 = NW), then sends
+# a result (ORU^R01) for it to your system a moment later.
+#
+#   # terminal 1 - "your system" receiving results
+#   mllp-sim serve --port 2576
+#   # terminal 2 - the simulated lab
+#   mllp-sim serve --scenario examples/scenarios/order-to-result.yaml
+#   # terminal 3 - place an order
+#   mllp-sim send examples/messages/orm_o01.hl7
+name: order-to-result
+description: ACK new orders, then send an ORU^R01 result to the ordering system.
+
+server:
+  port: 2575
+  http_port: 8080
+
+rules:
+  - name: new-order
+    match:
+      type: ORM^O01
+      fields:
+        ORC-1: NW
+        OBR-4.1: { exists: true }
+    action:
+      ack: AA
+      followup:
+        name: result
+        host: localhost
+        port: 2576
+        delay_ms: 2000
+        template_file: ../templates/oru_r01.hl7
+
+  - name: order-without-test
+    match:
+      type: ORM^O01
+      fields:
+        OBR-4.1: { exists: false }
+    action:
+      ack: AE
+      error: OBR-4 (universal service identifier) is required
+      error_code: 101
