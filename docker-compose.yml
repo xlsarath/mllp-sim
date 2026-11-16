@@ -1,0 +1,24 @@
+# Two simulators wired together: "lab" ACKs orders and sends results to "ehr".
+#
+#   docker compose up --build
+#   mllp-sim send examples/messages/orm_o01.hl7 --port 2575
+#   open http://localhost:8080   # lab: inbound order + outbound result
+#   open http://localhost:8081   # ehr: the result it received
+services:
+  lab:
+    build: .
+    image: mllp-sim:dev
+    command: [serve, --scenario, /examples/compose/lab.yaml]
+    ports:
+      - "2575:2575"
+      - "8080:8080"
+    depends_on:
+      - ehr
+
+  ehr:
+    build: .
+    image: mllp-sim:dev
+    command: [serve, --port, "2576"]
+    ports:
+      - "2576:2576"
+      - "8081:8080"

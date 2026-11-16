@@ -1,0 +1,46 @@
+name: Bug report
+description: Something does not behave as documented
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **Use synthetic data only** - never paste real patient
+        information (names, MRNs, dates of birth) into an issue.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: scenario
+    attributes:
+      label: Scenario file
+      description: The smallest scenario YAML that reproduces the problem.
+      render: yaml
+  - type: textarea
+    id: message
+    attributes:
+      label: Message (synthetic)
+      description: The HL7 message involved, with fake data.
+      render: text
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Output with `--log-level DEBUG`, if relevant.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `mllp-sim --version`, and Docker image tag if used.
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      placeholder: e.g. macOS 15 / Python 3.12, or Docker on Linux
