@@ -1,10 +1,17 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterator
+import random
+from collections.abc import AsyncIterator, Callable, Iterator
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from pathlib import Path
+from typing import Any
 
 import pytest
+
+from mllp_sim.scenario import parse_scenario
+from mllp_sim.server import MllpServer
+from mllp_sim.traffic import TrafficLog
 
 EXAMPLES = Path(__file__).resolve().parent.parent / "examples"
 
@@ -43,3 +50,32 @@ def adt_a01() -> str:
 @pytest.fixture
 def orm_o01() -> str:
     return ORM_O01
+
+
+ServerFactory = Callable[..., AbstractAsyncContextManager[MllpServer]]
+
+
+@pytest.fixture
+def make_server() -> ServerFactory:
+    """Start a server on an ephemeral port from an inline scenario dict."""
+
+    @asynccontextmanager
+    async def factory(
+        scenario: dict[str, Any] | None = None,
+        *,
+        seed: int = 1,
+        traffic: TrafficLog | None = None,
+        base_dir: Path | None = None,
+    ) -> AsyncIterator[MllpServer]:
+        data = dict(scenario or {})
+        server_settings = {"host": "127.0.0.1", "port": 0, **data.get("server", {})}
+        data["server"] = server_settings
+        parsed = parse_scenario(data, base_dir=base_dir)
+        server = MllpServer(parsed, traffic=traffic, rng=random.Random(seed))
+        await server.start()
+        try:
+            yield server
+        finally:
+            await server.close()
+
+    return factory
