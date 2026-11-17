@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ---- build: produce a wheel so the runtime image carries no build tooling ----
-FROM python:3.12-slim AS build
+FROM python:3.13-slim AS build
 WORKDIR /src
 RUN pip install --no-cache-dir build==1.2.2
 COPY pyproject.toml README.md LICENSE ./
@@ -9,7 +9,7 @@ COPY src ./src
 RUN python -m build --wheel --outdir /dist
 
 # ---- runtime ----
-FROM python:3.12-slim
+FROM python:3.13-slim
 LABEL org.opencontainers.image.title="mllp-sim" \
       org.opencontainers.image.description="Scriptable HL7 v2 MLLP test server and client" \
       org.opencontainers.image.licenses="MIT" \
